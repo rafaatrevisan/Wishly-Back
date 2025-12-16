@@ -1,5 +1,7 @@
 package com.wishlist.controller;
 
+import com.wishlist.model.dto.ProdutoRequestDTO;
+import com.wishlist.model.dto.ProdutoResponseDTO;
 import com.wishlist.model.entity.Produto;
 import com.wishlist.service.ProdutoService;
 import org.springframework.web.bind.annotation.*;
@@ -23,12 +25,9 @@ public class ProdutoController {
         return produtoService.listarPorLista(listaId);
     }
 
-    @PostMapping("/listas/{listaId}/produtos")
-    public Produto adicionar(
-            @PathVariable Long listaId,
-            @RequestBody Produto produto
-    ) {
-        return produtoService.adicionar(listaId, produto);
+    @PostMapping("/produtos")
+    public ProdutoResponseDTO adicionar(@RequestBody ProdutoRequestDTO dto) {
+        return produtoService.adicionar(dto);
     }
 
     @DeleteMapping("/produtos/{id}")
@@ -42,4 +41,13 @@ public class ProdutoController {
                 "total", produtoService.totalDaLista(listaId)
         );
     }
+
+    @PutMapping("/produtos/{id}/atualizar-preco")
+    public ProdutoResponseDTO atualizarPreco(
+            @PathVariable Long id,
+            @RequestBody Map<String, BigDecimal> body
+    ) {
+        return produtoService.atualizarPreco(id, body.get("preco"));
+    }
+
 }

@@ -6,13 +6,13 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Entity
-@Table(name = "lista")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Entity
+@Table(name = "lista")
 public class Lista {
 
     @Id
@@ -24,8 +24,13 @@ public class Lista {
 
     private String descricao;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+    }
 
     @OneToMany(mappedBy = "lista", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Produto> produtos;
