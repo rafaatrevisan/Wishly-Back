@@ -6,6 +6,8 @@ import com.wishlist.model.entity.Lista;
 import com.wishlist.model.entity.Produto;
 import com.wishlist.repository.ListaRepository;
 import com.wishlist.repository.ProdutoRepository;
+import com.wishlist.scraper.PriceScraper;
+import com.wishlist.scraper.ScraperFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -17,10 +19,16 @@ public class ProdutoService {
 
     private final ProdutoRepository produtoRepository;
     private final ListaRepository listaRepository;
+    private final ScraperFactory scraperFactory;
 
-    public ProdutoService(ProdutoRepository produtoRepository, ListaRepository listaRepository) {
+    public ProdutoService(
+            ProdutoRepository produtoRepository,
+            ListaRepository listaRepository,
+            ScraperFactory scraperFactory
+    ) {
         this.produtoRepository = produtoRepository;
         this.listaRepository = listaRepository;
+        this.scraperFactory = scraperFactory;
     }
 
     public List<Produto> listarPorLista(Long listaId) {
@@ -46,19 +54,6 @@ public class ProdutoService {
         return mapToResponseDTO(salvo);
     }
 
-    private ProdutoResponseDTO mapToResponseDTO(Produto produto) {
-        ProdutoResponseDTO dto = new ProdutoResponseDTO();
-        dto.setId(produto.getId());
-        dto.setNome(produto.getNome());
-        dto.setLink(produto.getLink());
-        dto.setLoja(produto.getLoja());
-        dto.setPrecoAtual(produto.getPrecoAtual());
-        dto.setImagemUrl(produto.getImagemUrl());
-        dto.setUltimaAtualizacao(produto.getUltimaAtualizacao());
-        dto.setListaId(produto.getLista().getId());
-        dto.setListaNome(produto.getLista().getNome());
-        return dto;
-    }
 
     public void remover(Long produtoId) {
         produtoRepository.deleteById(produtoId);
@@ -68,6 +63,7 @@ public class ProdutoService {
         return produtoRepository.calcularTotalPorLista(listaId);
     }
 
+    // ATUALIZAÇÃO MANUAL
     public ProdutoResponseDTO atualizarPreco(
             Long produtoId,
             BigDecimal novoPreco
@@ -83,4 +79,38 @@ public class ProdutoService {
         return mapToResponseDTO(salvo);
     }
 
+    // ATUALIZAÇÃO AUTOMÁTICA COM SCRAPER
+    public ProdutoResponseDTO atualizarPrecoAutomatico(Long produtoId) {
+
+        Produto produto = produtoRepository.findById(produtoId)
+                .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+
+        PriceScraper scraper =
+                scraperFactory.getScraper(produto.getLink());
+
+        BigDecimal novoPreco = scraper.extractPrice(produto.getLink());
+        String imagem = scraper.extractImage(produto.getLink());
+
+        produto.setPrecoAtual(novoPreco);
+        produto.setImagemUrl(imagem);
+        produto.setUltimaAtualizacao(LocalDateTime.now());
+
+        Produto salvo = produtoRepository.save(produto);
+
+        return mapToResponseDTO(salvo);
+    }
+
+    private ProdutoResponseDTO mapToResponseDTO(Produto produto) {
+        ProdutoResponseDTO dto = new ProdutoResponseDTO();
+        dto.setId(produto.getId());
+        dto.setNome(produto.getNome());
+        dto.setLink(produto.getLink());
+        dto.setLoja(produto.getLoja());
+        dto.setPrecoAtual(produto.getPrecoAtual());
+        dto.setImagemUrl(produto.getImagemUrl());
+        dto.setUltimaAtualizacao(produto.getUltimaAtualizacao());
+        dto.setListaId(produto.getLista().getId());
+        dto.setListaNome(produto.getLista().getNome());
+        return dto;
+    }
 }

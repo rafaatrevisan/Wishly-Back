@@ -4,6 +4,7 @@ import com.wishlist.model.dto.ProdutoRequestDTO;
 import com.wishlist.model.dto.ProdutoResponseDTO;
 import com.wishlist.model.entity.Produto;
 import com.wishlist.service.ProdutoService;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -48,6 +49,19 @@ public class ProdutoController {
             @RequestBody Map<String, BigDecimal> body
     ) {
         return produtoService.atualizarPreco(id, body.get("preco"));
+    }
+
+    @PutMapping("/produtos/{id}/atualizar-preco-auto")
+    public ProdutoResponseDTO atualizarPrecoAutomatico(@PathVariable Long id) {
+        return produtoService.atualizarPrecoAutomatico(id);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleIllegalArgument(IllegalArgumentException ex) {
+        return Map.of(
+                "error", ex.getMessage()
+        );
     }
 
 }
