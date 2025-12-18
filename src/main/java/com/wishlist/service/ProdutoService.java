@@ -174,6 +174,43 @@ public class ProdutoService {
         return atualizados;
     }
 
+    // Método que usa Job para atualizar preço e imagem
+    public void atualizarPrecosAutomaticamente() {
+
+        List<Produto> produtos = produtoRepository.findAll();
+
+        for (Produto produto : produtos) {
+
+            try {
+                PriceScraper scraper = scraperFactory.getScraper(produto.getLink());
+
+                BigDecimal novoPreco = scraper.extractPrice(produto.getLink());
+
+                if (novoPreco != null) {
+                    produto.setPrecoAtual(novoPreco);
+                }
+
+                String imagem = scraper.extractImage(produto.getLink());
+                if (imagem != null && !imagem.isBlank()) {
+                    produto.setImagemUrl(imagem);
+                }
+
+                produto.setUltimaAtualizacao(LocalDateTime.now());
+                produtoRepository.save(produto);
+
+            } catch (Exception e) {
+                System.err.println(
+                        "[JOB] Falha ao atualizar produto ID "
+                                + produto.getId()
+                                + " | Loja: "
+                                + produto.getLoja()
+                                + " | Erro: "
+                                + e.getMessage()
+                );
+            }
+        }
+    }
+
     public List<Produto> listarPorLista(Long listaId) {
         return produtoRepository.findByListaId(listaId);
     }
