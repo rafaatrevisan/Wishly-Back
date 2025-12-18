@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@RequestMapping("/produtos")
 @CrossOrigin
 public class ProdutoController {
 
@@ -25,50 +26,16 @@ public class ProdutoController {
         this.produtoService = produtoService;
     }
 
-    @GetMapping("/listas/{listaId}/produtos")
-    public List<Produto> listar(@PathVariable Long listaId) {
-        return produtoService.listarPorLista(listaId);
-    }
+    // ==================== CRUD BÁSICO ====================
 
-    @PostMapping("/produtos")
-    public ProdutoResponseDTO adicionar(@RequestBody ProdutoRequestDTO dto) {
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProdutoResponseDTO criar(@RequestBody ProdutoRequestDTO dto) {
         return produtoService.adicionar(dto);
     }
 
-    @DeleteMapping("/produtos/{id}")
-    public void remover(@PathVariable Long id) {
-        produtoService.remover(id);
-    }
-
-    @GetMapping("/listas/{listaId}/total")
-    public Map<String, BigDecimal> total(@PathVariable Long listaId) {
-        return Map.of(
-                "total", produtoService.totalDaLista(listaId)
-        );
-    }
-
-    @PutMapping("/produtos/{id}/atualizar-preco-auto")
-    public ProdutoResponseDTO atualizarPrecoAutomatico(@PathVariable Long id) {
-        return produtoService.atualizarPrecoAutomatico(id);
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleIllegalArgument(IllegalArgumentException ex) {
-        return Map.of(
-                "error", ex.getMessage()
-        );
-    }
-
-    @PostMapping("/listas/{listaId}/atualizar-precos")
-    public List<ProdutoResponseDTO> atualizarPrecosDaLista(
-            @PathVariable Long listaId
-    ) {
-        return produtoService.atualizarPrecosDaLista(listaId);
-    }
-
-    @PutMapping("/produtos/{id}")
-    public ResponseEntity<ProdutoResponseDTO> atualizarProduto(
+    @PutMapping("/{id}")
+    public ResponseEntity<ProdutoResponseDTO> atualizar(
             @PathVariable Long id,
             @RequestBody ProdutoRequestDTO dto
     ) {
@@ -76,19 +43,75 @@ public class ProdutoController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/produtos/{produtoId}/historico")
-    public List<ProdutoPrecoHistoricoResponseDTO> historicoPreco(
-            @PathVariable Long produtoId,
-            @RequestParam("dataInicio") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate dataInicio,
-            @RequestParam("dataFim") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate dataFim
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deletar(@PathVariable Long id) {
+        produtoService.remover(id);
+    }
+
+    // ==================== LISTAGEM ====================
+
+    @GetMapping("/lista/{listaId}")
+    public ResponseEntity<List<Produto>> listarPorLista(@PathVariable Long listaId) {
+        List<Produto> produtos = produtoService.listarPorLista(listaId);
+        return ResponseEntity.ok(produtos);
+    }
+
+    // ==================== ATUALIZAÇÕES DE PREÇO ====================
+
+    @PutMapping("/{id}/atualizar-preco-automatico")
+    public ResponseEntity<ProdutoResponseDTO> atualizarPrecoAutomatico(
+            @PathVariable Long id
     ) {
-        return produtoService.obterHistoricoPreco(
+        ProdutoResponseDTO response = produtoService.atualizarPrecoAutomatico(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/lista/{listaId}/atualizar-precos")
+    public ResponseEntity<List<ProdutoResponseDTO>> atualizarPrecosDaLista(
+            @PathVariable Long listaId
+    ) {
+        List<ProdutoResponseDTO> produtos = produtoService.atualizarPrecosDaLista(listaId);
+        return ResponseEntity.ok(produtos);
+    }
+
+    // ==================== HISTÓRICO ====================
+
+    @GetMapping("/{produtoId}/historico")
+    public ResponseEntity<List<ProdutoPrecoHistoricoResponseDTO>> obterHistoricoPreco(
+            @PathVariable Long produtoId,
+            @RequestParam("dataInicio") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+            @RequestParam("dataFim") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim
+    ) {
+        List<ProdutoPrecoHistoricoResponseDTO> historico = produtoService.obterHistoricoPreco(
                 produtoId,
                 dataInicio.atStartOfDay(),
                 dataFim.atTime(23, 59, 59)
         );
+        return ResponseEntity.ok(historico);
     }
 
+    // ==================== CÁLCULOS ====================
+
+    @GetMapping("/lista/{listaId}/total")
+    public ResponseEntity<Map<String, BigDecimal>> calcularTotalLista(
+            @PathVariable Long listaId
+    ) {
+        BigDecimal total = produtoService.totalDaLista(listaId);
+        return ResponseEntity.ok(Map.of("total", total));
+    }
+
+    // ==================== EXCEPTION HANDLERS ====================
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleIllegalArgument(IllegalArgumentException ex) {
+        return Map.of("error", ex.getMessage());
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Map<String, String> handleRuntimeException(RuntimeException ex) {
+        return Map.of("error", ex.getMessage());
+    }
 }
