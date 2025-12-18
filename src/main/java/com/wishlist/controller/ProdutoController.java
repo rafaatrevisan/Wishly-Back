@@ -1,14 +1,17 @@
 package com.wishlist.controller;
 
+import com.wishlist.model.dto.ProdutoPrecoHistoricoResponseDTO;
 import com.wishlist.model.dto.ProdutoRequestDTO;
 import com.wishlist.model.dto.ProdutoResponseDTO;
 import com.wishlist.model.entity.Produto;
 import com.wishlist.service.ProdutoService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -72,4 +75,20 @@ public class ProdutoController {
         ProdutoResponseDTO response = produtoService.atualizarProduto(id, dto);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/produtos/{produtoId}/historico")
+    public List<ProdutoPrecoHistoricoResponseDTO> historicoPreco(
+            @PathVariable Long produtoId,
+            @RequestParam("dataInicio") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate dataInicio,
+            @RequestParam("dataFim") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate dataFim
+    ) {
+        return produtoService.obterHistoricoPreco(
+                produtoId,
+                dataInicio.atStartOfDay(),
+                dataFim.atTime(23, 59, 59)
+        );
+    }
+
 }

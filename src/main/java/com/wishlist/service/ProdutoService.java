@@ -1,5 +1,6 @@
 package com.wishlist.service;
 
+import com.wishlist.model.dto.ProdutoPrecoHistoricoResponseDTO;
 import com.wishlist.model.dto.ProdutoRequestDTO;
 import com.wishlist.model.dto.ProdutoResponseDTO;
 import com.wishlist.model.entity.Lista;
@@ -269,6 +270,31 @@ public class ProdutoService {
                             " | Para: R$ " + novoPreco
             );
         }
+    }
+
+    public List<ProdutoPrecoHistoricoResponseDTO> obterHistoricoPreco(
+            Long produtoId,
+            LocalDateTime dataInicio,
+            LocalDateTime dataFim
+    ) {
+
+        produtoRepository.findById(produtoId)
+                .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+
+        List<ProdutoPrecoHistorico> historico =
+                produtoPrecoHistoricoRepository
+                        .findByProdutoIdAndDataColetaBetweenOrderByDataColetaAsc(
+                                produtoId,
+                                dataInicio,
+                                dataFim
+                        );
+
+        return historico.stream()
+                .map(h -> new ProdutoPrecoHistoricoResponseDTO(
+                        h.getPreco(),
+                        h.getDataColeta()
+                ))
+                .toList();
     }
 
     public List<Produto> listarPorLista(Long listaId) {
