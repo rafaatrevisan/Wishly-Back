@@ -9,6 +9,8 @@ import com.wishlist.repository.ListaRepository;
 import com.wishlist.repository.ProdutoRepository;
 import com.wishlist.scraper.PriceScraper;
 import com.wishlist.scraper.ScraperFactory;
+import com.wishlist.model.entity.ProdutoPrecoHistorico;
+import com.wishlist.repository.ProdutoPrecoHistoricoRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -22,15 +24,18 @@ public class ProdutoService {
     private final ProdutoRepository produtoRepository;
     private final ListaRepository listaRepository;
     private final ScraperFactory scraperFactory;
+    private final ProdutoPrecoHistoricoRepository produtoPrecoHistoricoRepository;
 
     public ProdutoService(
             ProdutoRepository produtoRepository,
             ListaRepository listaRepository,
-            ScraperFactory scraperFactory
+            ScraperFactory scraperFactory,
+            ProdutoPrecoHistoricoRepository produtoPrecoHistoricoRepository
     ) {
         this.produtoRepository = produtoRepository;
         this.listaRepository = listaRepository;
         this.scraperFactory = scraperFactory;
+        this.produtoPrecoHistoricoRepository = produtoPrecoHistoricoRepository;
     }
 
     public ProdutoResponseDTO adicionar(ProdutoRequestDTO dto) {
@@ -57,6 +62,9 @@ public class ProdutoService {
         produto.setUltimaAtualizacao(LocalDateTime.now());
 
         Produto salvo = produtoRepository.save(produto);
+
+        salvarHistoricoPreco(salvo, salvo.getPrecoAtual());
+
         return mapToResponseDTO(salvo);
     }
 
@@ -115,6 +123,8 @@ public class ProdutoService {
         Produto produto = produtoRepository.findById(produtoId)
                 .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
 
+        salvarHistoricoPreco(produto, novoPreco);
+
         produto.setPrecoAtual(novoPreco);
         produto.setUltimaAtualizacao(LocalDateTime.now());
 
@@ -129,7 +139,11 @@ public class ProdutoService {
 
         PriceScraper scraper = scraperFactory.getScraper(produto.getLink());
 
-        produto.setPrecoAtual(scraper.extractPrice(produto.getLink()));
+        BigDecimal novoPreco = scraper.extractPrice(produto.getLink());
+
+        salvarHistoricoPreco(produto, novoPreco);
+
+        produto.setPrecoAtual(novoPreco);
         produto.setImagemUrl(scraper.extractImage(produto.getLink()));
 
         if (produto.getNome() == null || produto.getNome().isBlank()) {
@@ -151,7 +165,11 @@ public class ProdutoService {
             try {
                 PriceScraper scraper = scraperFactory.getScraper(produto.getLink());
 
-                produto.setPrecoAtual(scraper.extractPrice(produto.getLink()));
+                BigDecimal novoPreco = scraper.extractPrice(produto.getLink());
+
+                salvarHistoricoPreco(produto, novoPreco);
+
+                produto.setPrecoAtual(novoPreco);
                 produto.setImagemUrl(scraper.extractImage(produto.getLink()));
 
                 if (produto.getNome() == null || produto.getNome().isBlank()) {
@@ -186,6 +204,8 @@ public class ProdutoService {
 
                 BigDecimal novoPreco = scraper.extractPrice(produto.getLink());
 
+                salvarHistoricoPreco(produto, novoPreco);
+
                 if (novoPreco != null) {
                     produto.setPrecoAtual(novoPreco);
                 }
@@ -208,6 +228,32 @@ public class ProdutoService {
                                 + e.getMessage()
                 );
             }
+        }
+    }
+
+    private void salvarHistoricoPreco(Produto produto, BigDecimal novoPreco) {
+
+        if (novoPreco == null) {
+            return;
+        }
+
+        BigDecimal precoAtual = produto.getPrecoAtual();
+
+        // Se não tem preço atual OU se o preço mudou, salva no histórico
+        if (precoAtual == null || precoAtual.compareTo(novoPreco) != 0) {
+
+            ProdutoPrecoHistorico historico = new ProdutoPrecoHistorico();
+            historico.setProduto(produto);
+            historico.setPreco(novoPreco);
+            historico.setLoja(produto.getLoja().name());
+
+            produtoPrecoHistoricoRepository.save(historico);
+
+            System.out.println(
+                    "[HISTÓRICO] Produto ID " + produto.getId() +
+                            " | De: R$ " + precoAtual +
+                            " | Para: R$ " + novoPreco
+            );
         }
     }
 
