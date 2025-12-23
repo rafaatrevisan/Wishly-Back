@@ -48,9 +48,6 @@ public class Produto {
     @JsonIgnoreProperties("produtos")
     private Lista lista;
 
-    @OneToMany(mappedBy = "produto", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProdutoPrecoHistorico> historicos;
-
     @PrePersist
     public void prePersist() {
         this.dataCriacao = LocalDateTime.now();
